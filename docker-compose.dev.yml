@@ -1,0 +1,85 @@
+# Docker Compose for Development
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: osint-postgres-dev
+    environment:
+      POSTGRES_DB: osint_db_dev
+      POSTGRES_USER: osint_user
+      POSTGRES_PASSWORD: osint_password
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - osint_network_dev
+
+  redis:
+    image: redis:7-alpine
+    container_name: osint-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - osint_network_dev
+
+  api:
+    build: .
+    container_name: osint-api-dev
+    command: uvicorn backend.server:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_TYPE: postgresql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: osint_user
+      DB_PASSWORD: osint_password
+      DB_NAME: osint_db_dev
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER: redis://redis:6379/1
+      CELERY_BACKEND: redis://redis:6379/2
+      DEBUG: "True"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - osint_network_dev
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: osint-worker-dev
+    command: celery -A tasks.celery worker --loglevel=debug
+    environment:
+      DATABASE_TYPE: postgresql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: osint_user
+      DB_PASSWORD: osint_password
+      DB_NAME: osint_db_dev
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER: redis://redis:6379/1
+      CELERY_BACKEND: redis://redis:6379/2
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - osint_network_dev
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+
+networks:
+  osint_network_dev:
+    driver: bridge

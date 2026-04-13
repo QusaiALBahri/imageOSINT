@@ -1,0 +1,147 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: osint-postgres
+    environment:
+      POSTGRES_DB: osint_db
+      POSTGRES_USER: osint_user
+      POSTGRES_PASSWORD: osint_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U osint_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - osint_network
+
+  # Redis Cache & Broker
+  redis:
+    image: redis:7-alpine
+    container_name: osint-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - osint_network
+
+  # FastAPI Backend
+  api:
+    build: .
+    container_name: osint-api
+    command: uvicorn backend.server:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_TYPE: postgresql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: osint_user
+      DB_PASSWORD: osint_password
+      DB_NAME: osint_db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER: redis://redis:6379/1
+      CELERY_BACKEND: redis://redis:6379/2
+      DEBUG: "True"
+      SECRET_KEY: your-secret-key-here
+    volumes:
+      - .:/app
+      - uploads_volume:/app/uploads
+      - outputs_volume:/app/outputs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - osint_network
+
+  # Celery Worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: osint-worker
+    command: celery -A tasks.celery worker --loglevel=info --concurrency=4
+    environment:
+      DATABASE_TYPE: postgresql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: osint_user
+      DB_PASSWORD: osint_password
+      DB_NAME: osint_db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER: redis://redis:6379/1
+      CELERY_BACKEND: redis://redis:6379/2
+    volumes:
+      - .:/app
+      - uploads_volume:/app/uploads
+      - outputs_volume:/app/outputs
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - osint_network
+
+  # Celery Beat (Scheduler)
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: osint-beat
+    command: celery -A tasks.celery beat --loglevel=info
+    environment:
+      DATABASE_TYPE: postgresql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: osint_user
+      DB_PASSWORD: osint_password
+      DB_NAME: osint_db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER: redis://redis:6379/1
+      CELERY_BACKEND: redis://redis:6379/2
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - osint_network
+
+  # Gradio UI (Optional)
+  gradio:
+    build: .
+    container_name: osint-gradio
+    command: python app.py
+    ports:
+      - "7860:7860"
+    environment:
+      API_URL: http://api:8000
+    volumes:
+      - .:/app
+    depends_on:
+      - api
+    networks:
+      - osint_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_volume:
+  outputs_volume:
+
+networks:
+  osint_network:
+    driver: bridge
