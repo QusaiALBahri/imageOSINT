@@ -67,8 +67,18 @@ def main():
     print("   Press Ctrl+C to stop\n")
     
     try:
-        from app import create_interface
-        demo = create_interface()
+        import app
+        # Since app.py doesn't have create_interface, we launch the demo directly if it's defined
+        # or we can modify app.py to have a create_interface function.
+        # For now, we'll try to import the demo object if it exists.
+        if hasattr(app, 'demo'):
+            demo = app.demo
+        else:
+            # Fallback: if app.py just runs demo.launch(), we can't easily capture it.
+            # We'll assume app.py is modified to provide a demo object.
+            print("❌ app.py does not export a 'demo' object. Please check app.py")
+            sys.exit(1)
+            
         demo.launch(
             server_name="127.0.0.1",
             server_port=7860,

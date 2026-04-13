@@ -9,7 +9,7 @@ from typing import Optional
 from urllib.parse import urlparse
 import requests
 from fake_useragent import UserAgent
-from config import USER_AGENTS, REQUEST_TIMEOUT, RATE_LIMIT_DELAY
+from core.config import settings
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +22,7 @@ def get_random_user_agent() -> str:
     try:
         return ua.random
     except Exception:
-        return random.choice(USER_AGENTS)
+        return random.choice(settings.USER_AGENTS if hasattr(settings, 'USER_AGENTS') else ["Mozilla/5.0"])
 
 
 def get_session_with_headers() -> requests.Session:

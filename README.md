@@ -8,10 +8,11 @@
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Sponsor](https://img.shields.io/badge/Sponsor-Buy Me a Coffee-orange?style=flat&logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/)
 
 **Enterprise-grade OSINT image analysis platform with reverse search, geolocation intelligence, and distributed async processing**
 
-[Features](#features) • [Quick Start](#quick-start) • [Architecture](#architecture) • [Documentation](#documentation) • [Contributing](#contributing)
+[Features](#features) • [Quick Start](#quick-start) • [Architecture](#architecture) • [Documentation](#documentation) • [Wiki](https://github.com/QusaiALBahri/imageOSINT/wiki) • [Contributing](#contributing)
 
 </div>
 
